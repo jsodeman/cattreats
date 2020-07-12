@@ -1,42 +1,47 @@
 #include <Arduino.h>
-#include <Stepper.h>
+#include <Unistep2.h>
 #include <math.h>
+#include <Bounce2.h>
+// https://github.com/reven/Unistep2
 
-#define STEPS 2076 //2038
-#define IN1   D1   // IN1 is connected to NodeMCU pin D1 (GPIO5)
-#define IN2   D2   // IN2 is connected to NodeMCU pin D2 (GPIO4)
-#define IN3   D3   // IN3 is connected to NodeMCU pin D3 (GPIO0)
-#define IN4   D4   // IN4 is connected to NodeMCU pin D4 (GPIO2)
+// TODO: debounce https://github.com/thomasfredericks/Bounce2
+// TODO: buzzer on timer https://randomnerdtutorials.com/interrupts-timers-esp8266-arduino-ide-nodemcu/
 
-Stepper stepper(STEPS, IN4, IN2, IN3, IN1);
+#define STEPS 4096
+
+Bounce debouncer = Bounce(); 
+Unistep2 stepper(D1, D2, D3, D4, 4096, 1000);
 
 void ICACHE_RAM_ATTR btn_full() {
- 	Serial.println("One Turn");
-	stepper.step(STEPS);
-	
+	Serial.println("full");
+	stepper.move(STEPS);
+}
+
+void moveSmall() {
+	Serial.println("small");
+	stepper.move(floor(STEPS / 720.0));
 }
 
 void ICACHE_RAM_ATTR btn_small() {
- 	Serial.println("Small Turn");
-	stepper.step(1);
+	Serial.println("trigger");
+	if (debouncer.fell()) {
+		moveSmall();
+	}
 }
 
 void setup() {
 	Serial.begin(115200);
 
-  	stepper.setSpeed(5);
 	pinMode(D6, INPUT_PULLUP);
-	pinMode(D7, INPUT_PULLUP);
+	//pinMode(D7, INPUT_PULLUP);
 	attachInterrupt(D6, btn_full, RISING);
 	attachInterrupt(D7, btn_small, RISING);
+
+	debouncer.attach(D7, INPUT_PULLUP);
+	debouncer.interval(25);
 }
 
 void loop() {
-	// stepper.step(1624);
-	// digitalWrite(IN1, LOW);
-	// digitalWrite(IN2, LOW);
-	// digitalWrite(IN3, LOW);
-	// digitalWrite(IN4, LOW);
-	// delay(5000);
-	yield();
+	debouncer.update();
+	 stepper.run();
 }
