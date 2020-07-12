@@ -6,6 +6,7 @@
 
 // TODO: MQTT
 // TODO: change button to small adjustment, dispense only from app
+// FIXME: bug when stopping while in the middle of buzzing
 
 #define STEPS 4096
 #define BUZZ D5
@@ -16,25 +17,29 @@ const long BUZZ_OFF = 5000;
 const int STATE_WAIT = 1;
 const int STATE_DISPENSE = 2;
 const int STATE_BUZZ = 3;
-// const int STATE_RESET = 4;
+const int RESET_DELAY = 1000;
 
 int state = STATE_WAIT; 
 bool buzzing = false;
 long buzzTimer = 0;
+long resetClock = 0;
 
 // Bounce debouncer = Bounce(); 
-// Bounce debouncerPir = Bounce(); 
 Unistep2 stepper(D1, D2, D3, D4, 4096, 1000);
 
 void ICACHE_RAM_ATTR btn_full() {
 	if (state != STATE_WAIT) {
 		return;
-	} 
+	}
 
+	if (millis() - resetClock < RESET_DELAY) {
+		Serial.println("false trigger");
+		return;
+	}
+
+	detachInterrupt(BTN_FULL);
 	state = STATE_DISPENSE;
 	Serial.println("dispensing");
-	detachInterrupt(BTN_FULL);
-	//digitalWrite(BUZZ, HIGH);
 	stepper.move(STEPS);
 }
 
@@ -51,13 +56,6 @@ void ICACHE_RAM_ATTR btn_full() {
 // 	}
 // }
 
-// 1) button press
-// 2) turn stepper
-// 3) when done, start buzzer
-// 4) on PIR, stop buzzer
-// block button until buzzer is off
-// state = waiting, dispensing, buzzing
-
 void ICACHE_RAM_ATTR btn_pir() {
 	if (state != STATE_BUZZ) {
 		return;
@@ -68,13 +66,12 @@ void ICACHE_RAM_ATTR btn_pir() {
 	Serial.println("buzz stop");
 	state = STATE_WAIT;
 	detachInterrupt(PIR);
+	resetClock = millis();
 	attachInterrupt(BTN_FULL, btn_full, RISING);
 }
 
 void setup() {
 	Serial.begin(9600);
-	// debouncer.attach(BTN_FULL, INPUT_PULLUP);
-	// debouncer.interval(250);
 
 	pinMode(BTN_FULL, INPUT_PULLUP);
 	pinMode(BUZZ, OUTPUT);
