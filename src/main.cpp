@@ -5,6 +5,9 @@
 #include <IotWebConf.h>
 #include <MQTT.h>
 
+// TODO: replace mosquittos with https://github.com/chkr1011/MQTTnet
+// TODO: build website for controlling
+
 // ----------- Wifi and MQTT
 const char thingName[] = "catTreats1";
 const char wifiInitialApPassword[] = "mewmewmew";
@@ -77,6 +80,7 @@ void ICACHE_RAM_ATTR btn_full() {
 	detachInterrupt(BTN_FULL);
 	state = STATE_DISPENSE;
 	Serial.println("dispensing");
+	mqttClient.publish("/test/status", "treating");
 	stepper.move(STEPS);
 }
 
@@ -313,4 +317,5 @@ boolean connectMqttOptions()
 void mqttMessageReceived(String &topic, String &payload)
 {
   Serial.println("Incoming: " + topic + " - " + payload);
+  btn_full();
 }
